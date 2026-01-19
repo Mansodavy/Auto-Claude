@@ -33,7 +33,7 @@
     "python:verify": "node scripts/verify-python-bundling.cjs",
     "package": "npm run python:download && electron-vite build && electron-builder --publish never",
     "package:mac": "npm run python:download && electron-vite build && electron-builder --mac --publish never",
-    "package:win": "npm run python:download && electron-vite build && electron-builder --win --publish never",
+    "package:win": "npm run python:download && node scripts/create-pth-file.cjs && electron-vite build && electron-builder --win --publish never",
     "package:linux": "npm run python:download && electron-vite build && electron-builder --linux --publish never",
     "package:flatpak": "npm run python:download && electron-vite build && electron-builder --linux flatpak --publish never",
     "start:packaged:mac": "open dist/mac-arm64/Auto-Claude.app || open dist/mac/Auto-Claude.app",
@@ -186,6 +186,50 @@
           "!**/.pytest_cache",
           "!**/.mypy_cache"
         ]
+      },
+      {
+        "from": "../../node_modules/proper-lockfile",
+        "to": "app.asar.unpacked/node_modules/proper-lockfile"
+      },
+      {
+        "from": "../../node_modules/graceful-fs",
+        "to": "app.asar.unpacked/node_modules/graceful-fs"
+      },
+      {
+        "from": "../../node_modules/retry",
+        "to": "app.asar.unpacked/node_modules/retry"
+      },
+      {
+        "from": "../../node_modules/signal-exit",
+        "to": "app.asar.unpacked/node_modules/signal-exit"
+      },
+      {
+        "from": "../../node_modules/minimatch",
+        "to": "app.asar.unpacked/node_modules/minimatch"
+      },
+      {
+        "from": "../../node_modules/@isaacs/brace-expansion",
+        "to": "app.asar.unpacked/node_modules/@isaacs/brace-expansion"
+      },
+      {
+        "from": "../../node_modules/@isaacs/balanced-match",
+        "to": "app.asar.unpacked/node_modules/@isaacs/balanced-match"
+      },
+      {
+        "from": "../../node_modules/chokidar",
+        "to": "app.asar.unpacked/node_modules/chokidar"
+      },
+      {
+        "from": "../../node_modules/readdirp",
+        "to": "app.asar.unpacked/node_modules/readdirp"
+      },
+      {
+        "from": "../../node_modules/semver",
+        "to": "app.asar.unpacked/node_modules/semver"
+      },
+      {
+        "from": "../../node_modules/uuid",
+        "to": "app.asar.unpacked/node_modules/uuid"
       }
     ],
     "mac": {
