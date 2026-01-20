@@ -46,5 +46,10 @@
   },
   "overrides": {
     "@electron/rebuild": "4.0.2"
+  },
+  "dependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.55.1",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.1.18",
+    "lightningcss-win32-x64-msvc": "^1.30.2"
   }
 }

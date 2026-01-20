@@ -6,6 +6,9 @@ import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
+import { getProfileEnv } from '../rate-limit-detector';
+import { getAPIProfileEnv } from '../services/profile-service';
+import { getOAuthModeClearVars } from './env-utils';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -134,6 +137,18 @@ export class AgentManager extends EventEmitter {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
+    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
+    const profileEnv = getProfileEnv();
+
+    // Get active API profile environment variables (ANTHROPIC_API_KEY, etc.)
+    const apiProfileEnv = await getAPIProfileEnv();
+
+    // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
+    const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
+
+    // Merge all environment variables
+    const finalEnv = { ...combinedEnv, ...oauthModeClearVars, ...profileEnv, ...apiProfileEnv };
+
     // spec_runner.py will auto-start run.py after spec creation completes
     const args = [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
 
@@ -176,7 +191,7 @@ export class AgentManager extends EventEmitter {
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch);
 
     // Note: This is spec-creation but it chains to task-execution via run.py
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, finalEnv, 'task-execution');
   }
 
   /**
@@ -227,6 +242,18 @@ export class AgentManager extends EventEmitter {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
+    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
+    const profileEnv = getProfileEnv();
+
+    // Get active API profile environment variables (ANTHROPIC_API_KEY, etc.)
+    const apiProfileEnv = await getAPIProfileEnv();
+
+    // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
+    const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
+
+    // Merge all environment variables
+    const finalEnv = { ...combinedEnv, ...oauthModeClearVars, ...profileEnv, ...apiProfileEnv };
+
     const args = [runPath, '--spec', specId, '--project-dir', projectPath];
 
     // Always use auto-continue when running from UI (non-interactive)
@@ -253,7 +280,7 @@ export class AgentManager extends EventEmitter {
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, specId, options, false);
 
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, finalEnv, 'task-execution');
   }
 
   /**
@@ -288,9 +315,21 @@ export class AgentManager extends EventEmitter {
     // Get combined environment variables
     const combinedEnv = this.processManager.getCombinedEnv(projectPath);
 
+    // Get active Claude profile environment (CLAUDE_CODE_OAUTH_TOKEN if not default)
+    const profileEnv = getProfileEnv();
+
+    // Get active API profile environment variables (ANTHROPIC_API_KEY, etc.)
+    const apiProfileEnv = await getAPIProfileEnv();
+
+    // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
+    const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
+
+    // Merge all environment variables
+    const finalEnv = { ...combinedEnv, ...oauthModeClearVars, ...profileEnv, ...apiProfileEnv };
+
     const args = [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
 
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'qa-process');
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, finalEnv, 'qa-process');
   }
 
   /**
