@@ -855,6 +855,84 @@ class WorktreeManager:
 
     # ==================== PR Creation Methods ====================
 
+    def validate_pr_prerequisites(
+        self, spec_name: str, target_branch: str | None = None
+    ) -> ValidationResult:
+        """
+        Validate that PR prerequisites are met before creating a pull request.
+
+        Checks:
+        1. Head (spec) branch exists and has a valid SHA
+        2. Base (target) branch exists and has a valid SHA
+        3. There are commits between base and head branches
+
+        Args:
+            spec_name: The spec folder name
+            target_branch: Target branch for PR (defaults to base_branch)
+
+        Returns:
+            ValidationResult with keys:
+                - success: bool - Whether validation passed
+                - error: str - Error message if validation failed
+                - head_sha: str - SHA of head branch (if found)
+                - base_sha: str - SHA of base branch (if found)
+                - commit_count: int - Number of commits between branches
+        """
+        branch = self.get_branch_name(spec_name)
+        base = target_branch or self.base_branch
+
+        # Check if head branch exists and get its SHA
+        head_result = self._run_git(["rev-parse", "--verify", branch])
+        if head_result.returncode != 0:
+            return ValidationResult(
+                success=False,
+                error=f"Branch '{branch}' does not exist or has no commits",
+            )
+
+        head_sha = head_result.stdout.strip()
+
+        # Check if base branch exists and get its SHA
+        base_result = self._run_git(["rev-parse", "--verify", base])
+        if base_result.returncode != 0:
+            return ValidationResult(
+                success=False,
+                error=f"Base branch '{base}' does not exist",
+                head_sha=head_sha,
+            )
+
+        base_sha = base_result.stdout.strip()
+
+        # Count commits between base and head
+        count_result = self._run_git(["rev-list", "--count", f"{base}..{branch}"])
+        if count_result.returncode != 0:
+            return ValidationResult(
+                success=False,
+                error=f"Failed to count commits between '{base}' and '{branch}'",
+                head_sha=head_sha,
+                base_sha=base_sha,
+            )
+
+        commit_count = int(count_result.stdout.strip())
+
+        # Check if there are any commits
+        if commit_count == 0:
+            return ValidationResult(
+                success=False,
+                error=f"No commits between '{base}' and '{branch}'. Create some commits before creating a PR.",
+                head_sha=head_sha,
+                base_sha=base_sha,
+                commit_count=0,
+            )
+
+        # All checks passed
+        return ValidationResult(
+            success=True,
+            error="",
+            head_sha=head_sha,
+            base_sha=base_sha,
+            commit_count=commit_count,
+        )
+
     def push_branch(self, spec_name: str, force: bool = False) -> PushBranchResult:
         """
         Push a spec's branch to the remote origin with retry logic.
