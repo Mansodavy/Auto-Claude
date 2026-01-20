@@ -1288,6 +1288,15 @@ class WorktreeManager:
                 - already_exists: bool (if PR already exists)
                 - error: str (if failed)
         """
+        # Validate PR prerequisites before attempting push
+        validation_result = self.validate_pr_prerequisites(spec_name, target_branch)
+        if not validation_result.get("success"):
+            return PushAndCreatePRResult(
+                success=False,
+                pushed=False,
+                error=validation_result.get("error", "Validation failed"),
+            )
+
         # Step 1: Push the branch
         push_result = self.push_branch(spec_name, force=force_push)
         if not push_result.get("success"):
