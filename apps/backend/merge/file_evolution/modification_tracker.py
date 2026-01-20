@@ -187,7 +187,8 @@ class ModificationTracker:
                 ["git", "merge-base", target_branch, "HEAD"],
                 cwd=worktree_path,
                 capture_output=True,
-                text=True,
+                encoding='utf-8',
+                errors='replace',
                 check=True,
             )
             merge_base = merge_base_result.stdout.strip()
@@ -197,7 +198,8 @@ class ModificationTracker:
                 ["git", "diff", "--name-only", f"{merge_base}..HEAD"],
                 cwd=worktree_path,
                 capture_output=True,
-                text=True,
+                encoding='utf-8',
+                errors='replace',
                 check=True,
             )
             changed_files = [f for f in result.stdout.strip().split("\n") if f]
@@ -218,7 +220,8 @@ class ModificationTracker:
                         ["git", "diff", f"{merge_base}..HEAD", "--", file_path],
                         cwd=worktree_path,
                         capture_output=True,
-                        text=True,
+                        encoding='utf-8',
+                        errors='replace',
                         check=True,
                     )
 
@@ -228,7 +231,8 @@ class ModificationTracker:
                             ["git", "show", f"{merge_base}:{file_path}"],
                             cwd=worktree_path,
                             capture_output=True,
-                            text=True,
+                            encoding='utf-8',
+                            errors='replace',
                             check=True,
                         )
                         old_content = show_result.stdout
@@ -354,7 +358,8 @@ class ModificationTracker:
                     ["git", "merge-base", branch, "HEAD"],
                     cwd=worktree_path,
                     capture_output=True,
-                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
                 )
                 if result.returncode == 0:
                     debug(
@@ -373,7 +378,8 @@ class ModificationTracker:
                 ["git", "rev-parse", "--verify", "main"],
                 cwd=worktree_path,
                 capture_output=True,
-                text=True,
+                encoding='utf-8',
+                errors='replace',
             )
             if result.returncode == 0:
                 debug_warning(
