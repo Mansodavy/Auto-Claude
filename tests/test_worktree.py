@@ -709,3 +709,134 @@ class TestWorktreeCleanup:
         warning = manager.get_worktree_count_warning(critical_threshold=20)
         assert warning is not None
         assert "CRITICAL" in warning
+
+
+class TestPRValidation:
+    """Tests for PR prerequisites validation."""
+
+    def test_validate_pr_prerequisites_branch_not_found(self, temp_git_repo: Path):
+        """validate_pr_prerequisites returns error when head branch doesn't exist."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Try to validate a spec that doesn't exist (no worktree created)
+        result = manager.validate_pr_prerequisites("nonexistent-spec")
+
+        assert result["success"] is False
+        assert "does not exist" in result["error"]
+        assert "auto-claude/nonexistent-spec" in result["error"]
+        assert "head_sha" not in result or result.get("head_sha") is None
+
+    def test_validate_pr_prerequisites_no_commits(self, temp_git_repo: Path):
+        """validate_pr_prerequisites returns error when no commits between branches."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Create a worktree but don't make any commits
+        info = manager.create_worktree("empty-spec")
+
+        # Validate should fail because there are no commits
+        result = manager.validate_pr_prerequisites("empty-spec")
+
+        assert result["success"] is False
+        assert "No commits between" in result["error"]
+        assert "main" in result["error"]
+        assert "auto-claude/empty-spec" in result["error"]
+        assert result.get("commit_count") == 0
+        assert "head_sha" in result
+        assert "base_sha" in result
+
+    def test_validate_pr_prerequisites_success(self, temp_git_repo: Path):
+        """validate_pr_prerequisites succeeds when branch has commits."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Create a worktree with changes and commits
+        info = manager.create_worktree("valid-spec")
+        (info.path / "feature.txt").write_text("new feature")
+        add_result = subprocess.run(["git", "add", "."], cwd=info.path, capture_output=True)
+        assert add_result.returncode == 0, f"git add failed: {add_result.stderr}"
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", "Add feature"],
+            cwd=info.path, capture_output=True
+        )
+        assert commit_result.returncode == 0, f"git commit failed: {commit_result.stderr}"
+
+        # Validate should succeed
+        result = manager.validate_pr_prerequisites("valid-spec")
+
+        assert result["success"] is True
+        assert result["error"] == ""
+        assert "head_sha" in result
+        assert "base_sha" in result
+        assert result["commit_count"] == 1
+        assert len(result["head_sha"]) == 40  # Git SHA is 40 characters
+        assert len(result["base_sha"]) == 40
+
+    def test_validate_pr_prerequisites_with_multiple_commits(self, temp_git_repo: Path):
+        """validate_pr_prerequisites correctly counts multiple commits."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Create a worktree with multiple commits
+        info = manager.create_worktree("multi-commit-spec")
+
+        # First commit
+        (info.path / "file1.txt").write_text("content 1")
+        subprocess.run(["git", "add", "."], cwd=info.path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "First commit"],
+            cwd=info.path, capture_output=True
+        )
+
+        # Second commit
+        (info.path / "file2.txt").write_text("content 2")
+        subprocess.run(["git", "add", "."], cwd=info.path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Second commit"],
+            cwd=info.path, capture_output=True
+        )
+
+        # Third commit
+        (info.path / "file3.txt").write_text("content 3")
+        subprocess.run(["git", "add", "."], cwd=info.path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Third commit"],
+            cwd=info.path, capture_output=True
+        )
+
+        # Validate should succeed with correct commit count
+        result = manager.validate_pr_prerequisites("multi-commit-spec")
+
+        assert result["success"] is True
+        assert result["commit_count"] == 3
+
+    def test_validate_pr_prerequisites_with_custom_target_branch(self, temp_git_repo: Path):
+        """validate_pr_prerequisites works with custom target branch."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Create a custom target branch
+        subprocess.run(
+            ["git", "checkout", "-b", "develop"],
+            cwd=temp_git_repo, capture_output=True
+        )
+        subprocess.run(
+            ["git", "checkout", manager.base_branch],
+            cwd=temp_git_repo, capture_output=True
+        )
+
+        # Create a worktree with commits
+        info = manager.create_worktree("feature-spec")
+        (info.path / "feature.txt").write_text("feature")
+        subprocess.run(["git", "add", "."], cwd=info.path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Add feature"],
+            cwd=info.path, capture_output=True
+        )
+
+        # Validate against custom target branch
+        result = manager.validate_pr_prerequisites("feature-spec", target_branch="develop")
+
+        assert result["success"] is True
+        assert result["commit_count"] >= 1
