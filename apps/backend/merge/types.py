@@ -580,6 +580,8 @@ class MergeResult:
 
 def compute_content_hash(content: str) -> str:
     """Compute a hash of file content for comparison."""
+    if content is None:
+        return ""
     return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
 
