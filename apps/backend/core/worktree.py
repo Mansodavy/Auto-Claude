@@ -142,6 +142,16 @@ class PushAndCreatePRResult(TypedDict, total=False):
     message: str
 
 
+class ValidationResult(TypedDict, total=False):
+    """Result of validating PR prerequisites."""
+
+    success: bool
+    error: str
+    head_sha: str
+    base_sha: str
+    commit_count: int
+
+
 class WorktreeError(Exception):
     """Error during worktree operations."""
 
